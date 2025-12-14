@@ -446,7 +446,7 @@ export default function GamePage() {
       }
     };
 
-    // ✅ ---- CHAT: add here ----
+    // ---- CHAT: add here ----
     socket.emit("chat:history", { roomCode, limit: 50 });
 
     const onChatHistory = ({ roomCode: rc, messages }: any) => {

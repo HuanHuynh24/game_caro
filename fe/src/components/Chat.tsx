@@ -56,15 +56,6 @@ export const Chat: React.FC<ChatProps> = ({
                 </div>
               );
             }
-            console.log(
-              "CHAT DEBUG:",
-              "mySymbol =",
-              mySymbol,
-              "| msg.sender =",
-              msg.sender,
-              "| full msg =",
-              msg
-            );
 
             const senderSymbol = (msg.sender ??
               msg.fromSymbol ??
