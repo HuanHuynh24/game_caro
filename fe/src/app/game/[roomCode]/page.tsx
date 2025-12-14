@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { BOARD_SIZE, ChatMessage, MoveLog } from "@/interface/type";
@@ -24,7 +30,13 @@ type RoomState = {
   turnStartedAt?: string | Date | null;
 };
 
-type Move = { x: number; y: number; symbol: "X" | "O"; at: string; by?: string };
+type Move = {
+  x: number;
+  y: number;
+  symbol: "X" | "O";
+  at: string;
+  by?: string;
+};
 
 type WinningLine = Array<{ x: number; y: number }> | number[] | null;
 
@@ -49,7 +61,10 @@ export default function GamePage() {
   const [lastMoveIndex, setLastMoveIndex] = useState<number | null>(null);
 
   // ✅ per-turn timer display
-  const [turnRemain, setTurnRemain] = useState({ X: TURN_SECONDS, O: TURN_SECONDS });
+  const [turnRemain, setTurnRemain] = useState({
+    X: TURN_SECONDS,
+    O: TURN_SECONDS,
+  });
 
   // ✅ modal control (không che line ngay)
   const [showModal, setShowModal] = useState(false);
@@ -87,7 +102,9 @@ export default function GamePage() {
     if (Array.isArray(wl) && typeof wl[0] === "number") return wl as number[];
 
     if (Array.isArray(wl) && typeof wl[0] === "object") {
-      return (wl as Array<{ x: number; y: number }>).map((p) => p.y * boardSize + p.x);
+      return (wl as Array<{ x: number; y: number }>).map(
+        (p) => p.y * boardSize + p.x
+      );
     }
     return null;
   };
@@ -106,7 +123,12 @@ export default function GamePage() {
   const addSystemMessage = useCallback((text: string) => {
     setMessages((prev) => [
       ...prev,
-      { id: Date.now().toString(), sender: "System", text, timestamp: new Date() },
+      {
+        id: Date.now().toString(),
+        sender: "System",
+        text,
+        timestamp: new Date(),
+      },
     ]);
   }, []);
 
@@ -199,7 +221,9 @@ export default function GamePage() {
       // ✅ add last move để vẽ đủ quân thắng
       if (lastMove) {
         setMoves((prev) => {
-          const existed = prev.some((m) => m.x === lastMove.x && m.y === lastMove.y);
+          const existed = prev.some(
+            (m) => m.x === lastMove.x && m.y === lastMove.y
+          );
           return existed ? prev : [...prev, lastMove];
         });
         setLastMoveIndex(lastMove.y * boardSize + lastMove.x);
@@ -207,7 +231,10 @@ export default function GamePage() {
         setMoveLogs((prev) => {
           const step = prev.length + 1;
           const existed = prev.some(
-            (l) => l.row === lastMove.y + 1 && l.col === lastMove.x + 1 && l.player === lastMove.symbol
+            (l) =>
+              l.row === lastMove.y + 1 &&
+              l.col === lastMove.x + 1 &&
+              l.player === lastMove.symbol
           );
           if (existed) return prev;
           return [
@@ -240,16 +267,53 @@ export default function GamePage() {
       }, 900);
     };
 
+    // ---- CHAT: add here ----
+    socket.emit("chat:history", { roomCode, limit: 50 });
+
+    const onChatHistory = ({ roomCode: rc, messages }: any) => {
+      if (String(rc) !== String(roomCode)) return;
+
+      const normalized = (messages || []).map((m: any) => ({
+        id: String(m.id || m._id || Date.now()),
+        sender: (m.sender || m.from?.symbol || m.fromSymbol || m.symbol) as
+          | "X"
+          | "O"
+          | "System",
+        text: m.text,
+        timestamp: new Date(m.at || m.createdAt || Date.now()),
+      }));
+
+      setMessages(normalized);
+    };
+
+    const onChatMessage = (m: any) => {
+      const msg = {
+        id: String(m.id || m._id || Date.now()),
+        sender: (m.sender || m.from?.symbol || m.fromSymbol || m.symbol) as
+          | "X"
+          | "O"
+          | "System",
+        text: m.text,
+        timestamp: new Date(m.at || m.createdAt || Date.now()),
+      };
+
+      setMessages((prev) => [...prev, msg]);
+    };
+
     socket.on("room:updated", onRoomUpdated);
     socket.on("game:moves", onGameMoves);
     socket.on("game:moved", onGameMoved);
     socket.on("game:ended", onGameEnded);
+    socket.on("chat:history", onChatHistory);
+    socket.on("chat:message", onChatMessage);
 
     return () => {
       socket.off("room:updated", onRoomUpdated);
       socket.off("game:moves", onGameMoves);
       socket.off("game:moved", onGameMoved);
       socket.off("game:ended", onGameEnded);
+      socket.off("chat:history", onChatHistory);
+      socket.off("chat:message", onChatMessage);
 
       if (modalTimerRef.current) {
         window.clearTimeout(modalTimerRef.current);
@@ -273,7 +337,9 @@ export default function GamePage() {
     const tick = () => {
       const active: "X" | "O" = room.xIsNext ? "X" : "O";
 
-      const startedAt = room.turnStartedAt ? new Date(room.turnStartedAt).getTime() : null;
+      const startedAt = room.turnStartedAt
+        ? new Date(room.turnStartedAt).getTime()
+        : null;
       const now = Date.now();
 
       let remain = TURN_SECONDS;
@@ -302,8 +368,13 @@ export default function GamePage() {
   useEffect(() => {
     if (!boardRef.current) return;
     const cell = 32;
-    const centerOffset = (boardSize * cell) / 2 - boardRef.current.clientWidth / 2;
-    boardRef.current.scrollTo({ top: centerOffset, left: centerOffset, behavior: "auto" });
+    const centerOffset =
+      (boardSize * cell) / 2 - boardRef.current.clientWidth / 2;
+    boardRef.current.scrollTo({
+      top: centerOffset,
+      left: centerOffset,
+      behavior: "auto",
+    });
   }, [boardSize]);
 
   // ================= CHAT =================
@@ -311,11 +382,6 @@ export default function GamePage() {
     const t = (text || "").trim();
     if (!t || !roomCode) return;
     socket.emit("chat:send", { roomCode, text: t });
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now().toString(), sender: "Me", text: t, timestamp: new Date() },
-    ]);
   };
 
   // ================= MOVE =================
@@ -352,6 +418,12 @@ export default function GamePage() {
   const nameO = pO?.username || (pO?.userId ? "Player O" : "Waiting...");
 
   const currentPlayer: "X" | "O" = room?.xIsNext ? "X" : "O";
+
+  const mySymbol = useMemo<"X" | "O" | null>(() => {
+    if (!room || !userId) return null;
+    const me = room.players?.find((p) => String(p.userId) === String(userId));
+    return (me?.symbol as any) ?? null;
+  }, [room, userId]);
 
   return (
     <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 overflow-hidden">
@@ -390,7 +462,11 @@ export default function GamePage() {
             player="X"
             name={nameX}
             elo={1450}
-            isActive={currentPlayer === "X" && room?.status === "playing" && !room?.winner}
+            isActive={
+              currentPlayer === "X" &&
+              room?.status === "playing" &&
+              !room?.winner
+            }
             score={scores.X}
             winner={room?.winner === "draw" ? "Draw" : (room?.winner as any)}
             timeRemaining={turnRemain.X}
@@ -406,7 +482,11 @@ export default function GamePage() {
             player="O"
             name={nameO}
             elo={1380}
-            isActive={currentPlayer === "O" && room?.status === "playing" && !room?.winner}
+            isActive={
+              currentPlayer === "O" &&
+              room?.status === "playing" &&
+              !room?.winner
+            }
             score={scores.O}
             winner={room?.winner === "draw" ? "Draw" : (room?.winner as any)}
             timeRemaining={turnRemain.O}
@@ -414,7 +494,9 @@ export default function GamePage() {
 
           <div className="mt-auto pt-6">
             <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-              <div className="text-xs text-slate-500 mb-2 font-semibold">ROOM CODE</div>
+              <div className="text-xs text-slate-500 mb-2 font-semibold">
+                ROOM CODE
+              </div>
 
               <div className="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
                 <span className="text-sm font-mono tracking-widest text-slate-300">
@@ -438,7 +520,9 @@ export default function GamePage() {
               </div>
 
               {!userId && (
-                <div className="mt-2 text-xs text-red-400">Chưa có userId (hãy login).</div>
+                <div className="mt-2 text-xs text-red-400">
+                  Chưa có userId (hãy login).
+                </div>
               )}
             </div>
           </div>
@@ -450,7 +534,8 @@ export default function GamePage() {
             ref={boardRef}
             className="flex-grow overflow-auto custom-scrollbar flex items-center justify-center p-10 relative"
             style={{
-              backgroundImage: "radial-gradient(circle at center, #1e293b 1px, transparent 1px)",
+              backgroundImage:
+                "radial-gradient(circle at center, #1e293b 1px, transparent 1px)",
               backgroundSize: "40px 40px",
             }}
           >
@@ -483,7 +568,9 @@ export default function GamePage() {
                 {/* Grid */}
                 <div
                   className="grid bg-slate-800/50 border border-slate-700"
-                  style={{ gridTemplateColumns: `repeat(${boardSize}, min-content)` }}
+                  style={{
+                    gridTemplateColumns: `repeat(${boardSize}, min-content)`,
+                  }}
                 >
                   {squares.map((val, idx) => (
                     <Square
@@ -503,7 +590,9 @@ export default function GamePage() {
                   {room.winner === "draw" ? (
                     <span className="text-yellow-400">Draw.</span>
                   ) : (
-                    <span className="text-emerald-400">Winner: {room.winner}</span>
+                    <span className="text-emerald-400">
+                      Winner: {room.winner}
+                    </span>
                   )}
                 </div>
               )}
@@ -517,25 +606,41 @@ export default function GamePage() {
             <button
               onClick={() => setActiveTab("chat")}
               className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors relative
-                ${activeTab === "chat" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+                ${
+                  activeTab === "chat"
+                    ? "text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
             >
               Chat
-              {activeTab === "chat" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500"></div>}
+              {activeTab === "chat" && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500"></div>
+              )}
             </button>
 
             <button
               onClick={() => setActiveTab("history")}
               className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors relative
-                ${activeTab === "history" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+                ${
+                  activeTab === "history"
+                    ? "text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
             >
               History
-              {activeTab === "history" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500"></div>}
+              {activeTab === "history" && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500"></div>
+              )}
             </button>
           </div>
 
           <div className="flex-grow overflow-hidden relative">
             {activeTab === "chat" ? (
-              <Chat messages={messages} onSendMessage={handleSendMessage} currentPlayer={currentPlayer} />
+              <Chat
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                mySymbol={mySymbol}
+              />
             ) : (
               <div className="h-full overflow-y-auto custom-scrollbar p-0">
                 <table className="w-full text-left text-sm border-collapse">
@@ -550,16 +655,30 @@ export default function GamePage() {
                   <tbody className="divide-y divide-slate-800">
                     {moveLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-slate-600 text-xs italic">
+                        <td
+                          colSpan={4}
+                          className="p-8 text-center text-slate-600 text-xs italic"
+                        >
                           No moves yet
                         </td>
                       </tr>
                     ) : (
                       moveLogs.map((log) => (
-                        <tr key={log.step} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="p-3 text-slate-500 font-mono">{log.step}</td>
+                        <tr
+                          key={log.step}
+                          className="hover:bg-slate-800/30 transition-colors"
+                        >
+                          <td className="p-3 text-slate-500 font-mono">
+                            {log.step}
+                          </td>
                           <td className="p-3">
-                            <span className={`font-bold ${log.player === "X" ? "text-cyan-400" : "text-rose-400"}`}>
+                            <span
+                              className={`font-bold ${
+                                log.player === "X"
+                                  ? "text-cyan-400"
+                                  : "text-rose-400"
+                              }`}
+                            >
                               {log.player}
                             </span>
                           </td>
@@ -609,7 +728,9 @@ export default function GamePage() {
       {/* Modal Overlay (✅ chỉ show sau delay) */}
       {showModal && (
         <Modal
-          winner={room?.winner === "draw" ? ("Draw" as any) : (room?.winner as any)}
+          winner={
+            room?.winner === "draw" ? ("Draw" as any) : (room?.winner as any)
+          }
           onRestart={() => router.replace(`/room/${roomCode}`)}
         />
       )}
