@@ -51,7 +51,7 @@ export function registerChatHandlers(io, socket) {
       io.to(roomCode).emit("chat:message", {
         id: msg._id,
         roomCode,
-        sender: senderSymbol, // ✅
+        sender: senderSymbol,
         from: { userId, username },
         text: msg.text,
         at: msg.createdAt,
