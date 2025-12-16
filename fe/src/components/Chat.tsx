@@ -82,25 +82,42 @@ export const Chat: React.FC<ChatProps> = ({
                   isMe ? "ml-auto items-end" : "mr-auto items-start"
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-start gap-1.5 mb-1">
+                  {/* Avatar */}
                   <div
                     className={`
-                      w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold
-                      ${
-                        isX
-                          ? "bg-cyan-900 text-cyan-400"
-                          : "bg-rose-900 text-rose-400"
-                      }
-                    `}
+      w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0
+      ${isX ? "bg-cyan-900 text-cyan-400" : "bg-rose-900 text-rose-400"}
+    `}
                   >
                     {senderSymbol}
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    {ts.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+
+                  {/* Username (trên) + Time (dưới) */}
+                  {!isMe && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 font-medium leading-tight">
+                        {msg.username || "Unknown"}
+                      </span>
+
+                      <span className="text-[9px] text-slate-500 font-mono leading-tight">
+                        {ts.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Nếu là isMe → chỉ hiện time (bên phải bubble) */}
+                  {isMe && (
+                    <span className="text-[9px] text-slate-500 font-mono leading-tight ml-1">
+                      {ts.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
 
                 <div

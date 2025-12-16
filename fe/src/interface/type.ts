@@ -29,6 +29,7 @@ export interface GameState {
 export interface ChatMessage {
   id: string;
   sender: Player | 'System';
+  username?: string;
   text: string;
   timestamp: Date;
 }

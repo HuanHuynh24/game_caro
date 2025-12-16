@@ -126,6 +126,7 @@ export default function GamePage() {
       {
         id: Date.now().toString(),
         sender: "System",
+        username: "System",
         text,
         timestamp: new Date(),
       },
@@ -279,6 +280,8 @@ export default function GamePage() {
           | "X"
           | "O"
           | "System",
+        username:
+          m.from?.username || (m.sender === "System" ? "System" : "Unknown"),
         text: m.text,
         timestamp: new Date(m.at || m.createdAt || Date.now()),
       }));
@@ -293,6 +296,8 @@ export default function GamePage() {
           | "X"
           | "O"
           | "System",
+        username:
+          m.from?.username || (m.sender === "System" ? "System" : "Unknown"),
         text: m.text,
         timestamp: new Date(m.at || m.createdAt || Date.now()),
       };

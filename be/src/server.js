@@ -8,9 +8,7 @@ async function start() {
   await connectDB();
   const server = http.createServer(app);
   attachSocket(server);
-  server.listen(ENV.PORT, () =>
-    console.log(`🚀 http://localhost:${ENV.PORT}`)
-  );
+  server.listen(ENV.PORT, () => console.log(`http://localhost:${ENV.PORT}`));
 }
 
 start();
