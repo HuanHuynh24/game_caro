@@ -3,7 +3,7 @@
 import { AuthModal } from "@/components/AuthModal";
 import { Button } from "@/components/Button";
 import { Play } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { MatchmakingLoader } from "@/components/MatchmakingLoader";
 import { JoinRoomModal } from "@/components/JoinRoomModal";
 import { useRouter } from "next/navigation";
@@ -41,15 +41,35 @@ export default function Home() {
     if (raw) setCurrentUser(JSON.parse(raw));
   }, []);
 
-  // ✅ Socket listeners: luôn attach theo socket hiện tại
+  // ===== MATCHMAKING HELPERS =====
+  const startMatchmaking = useCallback(() => {
+    if (!socket) return;
+    setRoomError(null);
+    socket.emit("matchmaking:find"); // ✅ quan trọng: emit bắt cặp
+  }, [socket]);
+
+  const cancelMatchmaking = useCallback(() => {
+    if (!socket) return;
+    socket.emit("matchmaking:cancel");
+  }, [socket]);
+
+  // ✅ Khi mở loader => tự động tìm trận
+  useEffect(() => {
+    if (!socket) return;
+    if (!isMatchmakingOpen) return;
+
+    startMatchmaking();
+  }, [socket, isMatchmakingOpen, startMatchmaking]);
+
+  // ✅ Socket listeners: room + matchmaking
   useEffect(() => {
     if (!socket) return;
 
+    // ---------- ROOM (giữ nguyên) ----------
     const onRoomCreated = (payload: any) => {
       setRoomError(null);
       setJoinLoading(false);
 
-      // BE của bạn trả roomCode (không có roomId)
       const roomCode = payload?.roomCode || payload?.room?.code;
       if (roomCode) router.push(`/room/${roomCode}`);
       else console.error("room:created missing roomCode", payload);
@@ -70,25 +90,66 @@ export default function Home() {
       console.error("room:error", message);
     };
 
+    // ---------- MATCHMAKING (mới) ----------
+    const onMMWaiting = () => {
+      // optional: bạn có thể set state hiển thị "đang tìm"
+      // console.log("matchmaking:waiting");
+    };
+
+    const onMMMatched = (payload: any) => {
+      const roomCode = payload?.roomCode;
+      if (!roomCode) {
+        setRoomError("Matchmaking matched nhưng thiếu roomCode");
+        setIsMatchmakingOpen(false);
+        return;
+      }
+
+      setIsMatchmakingOpen(false);
+
+      // ✅ VÀO TRẬN LUÔN
+      // Nếu bạn có route game riêng: đổi thành router.replace(`/game/${roomCode}`)
+      router.replace(`/room/${roomCode}`);
+    };
+
+    const onMMCanceled = () => {
+      // console.log("matchmaking:canceled");
+      setIsMatchmakingOpen(false);
+    };
+
+    const onMMError = ({ message }: any) => {
+      setRoomError(message || "Matchmaking error");
+      setIsMatchmakingOpen(false);
+    };
+
+    // bind
     socket.on("room:created", onRoomCreated);
     socket.on("room:joined", onRoomJoined);
     socket.on("room:error", onRoomError);
+
+    socket.on("matchmaking:waiting", onMMWaiting);
+    socket.on("matchmaking:matched", onMMMatched);
+    socket.on("matchmaking:canceled", onMMCanceled);
+    socket.on("matchmaking:error", onMMError);
 
     return () => {
       socket.off("room:created", onRoomCreated);
       socket.off("room:joined", onRoomJoined);
       socket.off("room:error", onRoomError);
+
+      socket.off("matchmaking:waiting", onMMWaiting);
+      socket.off("matchmaking:matched", onMMMatched);
+      socket.off("matchmaking:canceled", onMMCanceled);
+      socket.off("matchmaking:error", onMMError);
     };
   }, [socket, router]);
 
   // ===== ACTIONS =====
-
   const handlePlayNow = () => {
     setNextAction("quick-play");
     setRoomError(null);
 
     if (!currentUser) setIsModalOpen(true);
-    else setIsMatchmakingOpen(true);
+    else setIsMatchmakingOpen(true); // ✅ mở loader -> effect sẽ emit matchmaking:find
   };
 
   const handleCreateRoom = () => {
@@ -137,7 +198,7 @@ export default function Home() {
     setSocket(s);
 
     if (nextAction === "quick-play") {
-      setIsMatchmakingOpen(true);
+      setIsMatchmakingOpen(true); // ✅ mở loader -> effect sẽ emit matchmaking:find
     } else if (nextAction === "create-room") {
       s.emit("room:create");
     } else if (nextAction === "join-room") {
@@ -159,7 +220,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative flex flex-col font-sans">
-      {/* UI của bạn giữ nguyên... */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/05/co-caro.jpg"
@@ -233,7 +293,10 @@ export default function Home() {
 
       <MatchmakingLoader
         isOpen={isMatchmakingOpen}
-        onCancel={() => setIsMatchmakingOpen(false)}
+        onCancel={() => {
+          cancelMatchmaking(); // ✅ hủy tìm trận
+          setIsMatchmakingOpen(false);
+        }}
       />
 
       <JoinRoomModal
