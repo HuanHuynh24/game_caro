@@ -26,7 +26,7 @@ export function attachSocket(httpServer) {
 
   io.on("connection", (socket) => {
     registerRoomHandlers(io, socket);
-    registerMatchmakingHandlers(io, socket); // ✅ chơi ngay
+    registerMatchmakingHandlers(io, socket); //   chơi ngay
     registerGameHandlers(io, socket);
     registerChatHandlers(io, socket);
   });

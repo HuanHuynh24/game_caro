@@ -102,13 +102,13 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             {name}
           </h3>
 
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
+          {/* <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
               {player} • ELO {elo}
             </span>
             <span className="text-slate-500">•</span>
             <span>Wins: {score}</span>
-          </div>
+          </div> */}
         </div>
       </div>
 

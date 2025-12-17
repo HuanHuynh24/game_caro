@@ -78,7 +78,7 @@ export function registerMatchmakingHandlers(io, socket) {
       let code = genRoomCode6();
       while (await Room.findOne({ code })) code = genRoomCode6();
 
-      // ✅ AUTO-START: tạo phòng là playing luôn, cả 2 ready=true
+      //  AUTO-START: tạo phòng là playing luôn, cả 2 ready=true
       const room = await Room.create({
         code,
         hostId: opponent.userId, // người vào trước làm host
@@ -104,7 +104,7 @@ export function registerMatchmakingHandlers(io, socket) {
       // lấy room có username
       const populated = await loadRoomPopulated(code);
 
-      // ✅ thông báo match + bắt đầu game ngay
+      //  thông báo match + bắt đầu game ngay
       io.to(code).emit("matchmaking:matched", { roomCode: code, roomId: room._id });
 
       // đồng bộ room + game started (FE bạn đang listen room:updated + game:started)

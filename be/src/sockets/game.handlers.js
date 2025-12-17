@@ -120,7 +120,7 @@ export function registerGameHandlers(io, socket) {
         room.status = "finished";
         room.turnStartedAt = null;
 
-        // ✅ reset ready để rematch bắt buộc 2 người ready lại
+        //  reset ready để rematch bắt buộc 2 người ready lại
         room.players.forEach((p) => (p.isReady = false));
 
         await room.save();
@@ -142,7 +142,7 @@ export function registerGameHandlers(io, socket) {
         room.status = "finished";
         room.turnStartedAt = null;
 
-        // ✅ reset ready
+        //  reset ready
         room.players.forEach((p) => (p.isReady = false));
 
         await room.save();

@@ -25,7 +25,7 @@ export default function Home() {
 
   const router = useRouter();
 
-  // ✅ Socket nằm trong state để khi reset thì effect re-bind listeners
+  //  Socket nằm trong state để khi reset thì effect re-bind listeners
   const [socket, setSocket] = useState<Socket | null>(null);
 
   // init socket 1 lần khi mount
@@ -45,7 +45,7 @@ export default function Home() {
   const startMatchmaking = useCallback(() => {
     if (!socket) return;
     setRoomError(null);
-    socket.emit("matchmaking:find"); // ✅ quan trọng: emit bắt cặp
+    socket.emit("matchmaking:find"); //  quan trọng: emit bắt cặp
   }, [socket]);
 
   const cancelMatchmaking = useCallback(() => {
@@ -53,7 +53,7 @@ export default function Home() {
     socket.emit("matchmaking:cancel");
   }, [socket]);
 
-  // ✅ Khi mở loader => tự động tìm trận
+  //  Khi mở loader => tự động tìm trận
   useEffect(() => {
     if (!socket) return;
     if (!isMatchmakingOpen) return;
@@ -61,7 +61,7 @@ export default function Home() {
     startMatchmaking();
   }, [socket, isMatchmakingOpen, startMatchmaking]);
 
-  // ✅ Socket listeners: room + matchmaking
+  //  Socket listeners: room + matchmaking
   useEffect(() => {
     if (!socket) return;
 
@@ -106,7 +106,7 @@ export default function Home() {
 
       setIsMatchmakingOpen(false);
 
-      // ✅ VÀO TRẬN LUÔN
+      //  VÀO TRẬN LUÔN
       // Nếu bạn có route game riêng: đổi thành router.replace(`/game/${roomCode}`)
       router.replace(`/room/${roomCode}`);
     };
@@ -149,7 +149,7 @@ export default function Home() {
     setRoomError(null);
 
     if (!currentUser) setIsModalOpen(true);
-    else setIsMatchmakingOpen(true); // ✅ mở loader -> effect sẽ emit matchmaking:find
+    else setIsMatchmakingOpen(true); //  mở loader -> effect sẽ emit matchmaking:find
   };
 
   const handleCreateRoom = () => {
@@ -192,13 +192,13 @@ export default function Home() {
     localStorage.setItem("user", JSON.stringify(user));
     localStorage.setItem("token", token);
 
-    // ✅ reset socket => tạo socket mới => setSocket để listeners gắn lại
+    //  reset socket => tạo socket mới => setSocket để listeners gắn lại
     resetSocket();
     const s = getSocket();
     setSocket(s);
 
     if (nextAction === "quick-play") {
-      setIsMatchmakingOpen(true); // ✅ mở loader -> effect sẽ emit matchmaking:find
+      setIsMatchmakingOpen(true); //  mở loader -> effect sẽ emit matchmaking:find
     } else if (nextAction === "create-room") {
       s.emit("room:create");
     } else if (nextAction === "join-room") {
@@ -266,6 +266,21 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           {roomError && <p className="text-red-400">{roomError}</p>}
 
+          <div className="inline-block px-4 py-1.5 rounded-full bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 text-xs font-bold tracking-widest mb-4">
+            SEASON 5 IS LIVE
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-2xl">
+            Caro Online <br />
+            <span className="uppercase md:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">
+              Chơi Mọi Lúc, Thắng Mọi Nơi
+            </span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Chơi đối kháng trực tuyến, ghép trận nhanh, bảng xếp hạng cập nhật
+            theo thời gian thực.
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button onClick={handlePlayNow} icon={<Play />}>
               CHƠI NGAY
@@ -294,7 +309,7 @@ export default function Home() {
       <MatchmakingLoader
         isOpen={isMatchmakingOpen}
         onCancel={() => {
-          cancelMatchmaking(); // ✅ hủy tìm trận
+          cancelMatchmaking(); //  hủy tìm trận
           setIsMatchmakingOpen(false);
         }}
       />

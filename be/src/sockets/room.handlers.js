@@ -184,7 +184,7 @@ export function registerRoomHandlers(io, socket) {
         return socket.emit("room:error", { message: "Chưa đủ 2 người" });
       }
 
-      // ✅ bắt buộc cả 2 người phải ready lại trước khi start (fix rematch)
+      //  bắt buộc cả 2 người phải ready lại trước khi start (fix rematch)
       if (!room.players.every((p) => p.isReady)) {
         return socket.emit("room:error", { message: "Cần cả 2 người bấm READY/Play again trước khi bắt đầu" });
       }

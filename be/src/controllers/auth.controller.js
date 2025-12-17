@@ -9,7 +9,7 @@ function signToken(userId) {
 
 export const register = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
     if (!username || !password) {
       return res
@@ -26,7 +26,7 @@ export const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ username, passwordHash });
+    const user = await User.create({ username, passwordHash, email });
 
     const token = signToken(user._id.toString());
 
