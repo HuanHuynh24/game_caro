@@ -1,4 +1,6 @@
 import Room from "../models/Room.js";
+import User from "../models/User.js";
+import { calcEloDelta } from "../utils/elo.js";
 
 export const TURN_SECONDS = 30;
 
@@ -20,27 +22,58 @@ export async function startTurnTimer(io, roomCode) {
 
   // đọc room để tính remaining từ turnStartedAt
   const room = await Room.findOne({ code: roomCode })
-    .populate("players.userId", "username")
-    .populate("hostId", "username");
+    .populate("players.userId", "username elo") // ✅
+    .populate("hostId", "username elo");
 
   if (!room) return;
   if (room.status !== "playing" || room.winner) return;
 
-  const startedAt = room.turnStartedAt ? new Date(room.turnStartedAt).getTime() : Date.now();
+  const startedAt = room.turnStartedAt
+    ? new Date(room.turnStartedAt).getTime()
+    : Date.now();
   const elapsedMs = Date.now() - startedAt;
   const remainingMs = Math.max(0, TURN_SECONDS * 1000 - elapsedMs);
 
   const t = setTimeout(async () => {
     try {
       const room2 = await Room.findOne({ code: roomCode })
-        .populate("players.userId", "username")
-        .populate("hostId", "username");
+        .populate("players.userId", "username elo") // ✅
+        .populate("hostId", "username elo");
 
       if (!room2) return;
       if (room2.status !== "playing" || room2.winner) return;
 
       const loserSymbol = room2.xIsNext ? "X" : "O";
       const winnerSymbol = loserSymbol === "X" ? "O" : "X";
+
+      const px = room2.players.find((p) => p.symbol === "X");
+      const po = room2.players.find((p) => p.symbol === "O");
+
+      let eloChange = null;
+
+      if (px && po) {
+        const xId = uid(px.userId);
+        const oId = uid(po.userId);
+
+        const [ux, uo] = await Promise.all([
+          User.findById(xId).select("elo").lean(),
+          User.findById(oId).select("elo").lean(),
+        ]);
+
+        const scoreX = winnerSymbol === "X" ? 1 : 0;
+        const deltaX = calcEloDelta(ux.elo, uo.elo, scoreX);
+        const deltaO = -deltaX;
+
+        await Promise.all([
+          User.updateOne({ _id: xId }, { $inc: { elo: deltaX } }),
+          User.updateOne({ _id: oId }, { $inc: { elo: deltaO } }),
+        ]);
+
+        eloChange = {
+          X: { userId: xId, delta: deltaX },
+          O: { userId: oId, delta: deltaO },
+        };
+      }
 
       room2.winner = winnerSymbol;
       room2.status = "finished";
@@ -77,6 +110,7 @@ export async function startTurnTimer(io, roomCode) {
         reason: "timeout",
         loser: loserSymbol,
         turnSeconds: TURN_SECONDS,
+        eloChange,
       });
 
       clearTurnTimer(roomCode);

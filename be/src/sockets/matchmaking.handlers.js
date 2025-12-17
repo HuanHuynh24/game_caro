@@ -29,6 +29,7 @@ function publicRoom(room) {
     players: room.players.map((p) => ({
       userId: p.userId?._id ?? p.userId,
       username: p.userId?.username ?? null,
+      elo: p.userId?.elo ?? 1000,
       symbol: p.symbol,
       isReady: p.isReady,
     })),
@@ -40,8 +41,8 @@ function publicRoom(room) {
 
 async function loadRoomPopulated(code) {
   return Room.findOne({ code })
-    .populate("players.userId", "username")
-    .populate("hostId", "username");
+    .populate("players.userId", "username elo") // ✅
+    .populate("hostId", "username elo");
 }
 
 function safeJoin(io, socketId, roomCode) {
@@ -105,7 +106,10 @@ export function registerMatchmakingHandlers(io, socket) {
       const populated = await loadRoomPopulated(code);
 
       //  thông báo match + bắt đầu game ngay
-      io.to(code).emit("matchmaking:matched", { roomCode: code, roomId: room._id });
+      io.to(code).emit("matchmaking:matched", {
+        roomCode: code,
+        roomId: room._id,
+      });
 
       // đồng bộ room + game started (FE bạn đang listen room:updated + game:started)
       io.to(code).emit("room:updated", { room: publicRoom(populated) });

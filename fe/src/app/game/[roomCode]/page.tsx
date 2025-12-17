@@ -18,7 +18,12 @@ import { Square } from "@/components/Square";
 const TURN_SECONDS = 30;
 
 // ================= TYPES =================
-type Player = { userId: string; symbol: "X" | "O"; username?: string | null };
+type Player = {
+  userId: any;
+  symbol: "X" | "O";
+  username?: string | null;
+  elo?: number;
+};
 
 type RoomState = {
   code: string;
@@ -419,6 +424,9 @@ export default function GamePage() {
   const pX = room?.players?.find((p) => p.symbol === "X");
   const pO = room?.players?.find((p) => p.symbol === "O");
 
+  const eloX = pX?.elo ?? 1000;
+  const eloO = pO?.elo ?? 1000;
+
   const nameX = pX?.username || (pX?.userId ? "Player X" : "Waiting...");
   const nameO = pO?.username || (pO?.userId ? "Player O" : "Waiting...");
 
@@ -466,7 +474,7 @@ export default function GamePage() {
           <PlayerCard
             player="X"
             name={nameX}
-            elo={1450}
+            elo={eloX}
             isActive={
               currentPlayer === "X" &&
               room?.status === "playing" &&
@@ -486,7 +494,7 @@ export default function GamePage() {
           <PlayerCard
             player="O"
             name={nameO}
-            elo={1380}
+            elo={eloO} // ✅
             isActive={
               currentPlayer === "O" &&
               room?.status === "playing" &&

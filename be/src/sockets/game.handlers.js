@@ -1,8 +1,14 @@
 import Room from "../models/Room.js";
 import Move from "../models/Move.js";
 import Match from "../models/Match.js";
+import User from "../models/User.js";
+import { calcEloDelta } from "../utils/elo.js";
 import { ENV } from "../config/env.js";
-import { emptyBoard, inBounds, checkWinnerWithLine } from "../utils/gameLogic.js";
+import {
+  emptyBoard,
+  inBounds,
+  checkWinnerWithLine,
+} from "../utils/gameLogic.js";
 import { startTurnTimer, clearTurnTimer } from "./turnTimer.js";
 
 function uid(v) {
@@ -22,6 +28,7 @@ function publicRoom(room) {
     players: room.players.map((p) => ({
       userId: p.userId?._id ?? p.userId,
       username: p.userId?.username ?? null,
+      elo: p.userId?.elo ?? 1000,
       symbol: p.symbol,
       isReady: p.isReady,
     })),
@@ -63,16 +70,57 @@ async function finishMatch(room, winner) {
   return match;
 }
 
+async function applyElo(room, winner) {
+  // winner: "X" | "O" | "draw"
+  const px = room.players.find((p) => p.symbol === "X");
+  const po = room.players.find((p) => p.symbol === "O");
+  if (!px || !po) return null;
+
+  const xId = uid(px.userId);
+  const oId = uid(po.userId);
+
+  const [ux, uo] = await Promise.all([
+    User.findById(xId).select("elo").lean(),
+    User.findById(oId).select("elo").lean(),
+  ]);
+  if (!ux || !uo) return null;
+
+  let scoreX = 0.5;
+  let scoreO = 0.5;
+
+  if (winner === "X") {
+    scoreX = 1;
+    scoreO = 0;
+  }
+  if (winner === "O") {
+    scoreX = 0;
+    scoreO = 1;
+  }
+
+  const deltaX = calcEloDelta(ux.elo, uo.elo, scoreX);
+  const deltaO = -deltaX;
+
+  await Promise.all([
+    User.updateOne({ _id: xId }, { $inc: { elo: deltaX } }),
+    User.updateOne({ _id: oId }, { $inc: { elo: deltaO } }),
+  ]);
+
+  return {
+    X: { userId: xId, delta: deltaX },
+    O: { userId: oId, delta: deltaO },
+  };
+}
+
 export function registerGameHandlers(io, socket) {
   socket.on("game:move", async ({ roomCode, x, y }) => {
     try {
       const userId = socket.userId;
 
       const room = await Room.findOne({ code: roomCode })
-        .populate("players.userId", "username")
-        .populate("hostId", "username");
-
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+        .populate("players.userId", "username elo")
+        .populate("hostId", "username elo");
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
       if (room.status !== "playing")
         return socket.emit("room:error", { message: "Ván chưa bắt đầu" });
@@ -81,7 +129,8 @@ export function registerGameHandlers(io, socket) {
         return socket.emit("room:error", { message: "Ván đã kết thúc" });
 
       const me = findPlayer(room, userId);
-      if (!me) return socket.emit("room:error", { message: "Bạn không thuộc phòng" });
+      if (!me)
+        return socket.emit("room:error", { message: "Bạn không thuộc phòng" });
 
       const size = room.boardSize || ENV.BOARD_SIZE;
       if (!inBounds(size, x, y))
@@ -92,7 +141,8 @@ export function registerGameHandlers(io, socket) {
         return socket.emit("room:error", { message: "Chưa tới lượt bạn" });
 
       const existed = await Move.findOne({ roomId: room._id, x, y }).lean();
-      if (existed) return socket.emit("room:error", { message: "Ô đã được đánh" });
+      if (existed)
+        return socket.emit("room:error", { message: "Ô đã được đánh" });
 
       const move = await Move.create({
         roomId: room._id,
@@ -113,17 +163,22 @@ export function registerGameHandlers(io, socket) {
         winLen
       );
 
-      const lastMovePayload = { x, y, symbol: currentSymbol, by: userId, at: move.at };
+      const lastMovePayload = {
+        x,
+        y,
+        symbol: currentSymbol,
+        by: userId,
+        at: move.at,
+      };
 
       if (winner) {
         room.winner = winner;
         room.status = "finished";
         room.turnStartedAt = null;
-
-        //  reset ready để rematch bắt buộc 2 người ready lại
         room.players.forEach((p) => (p.isReady = false));
-
         await room.save();
+
+        const eloChange = await applyElo(room, winner);
 
         await finishMatch(room, winner);
         clearTurnTimer(roomCode);
@@ -133,6 +188,7 @@ export function registerGameHandlers(io, socket) {
           winner,
           winningLine,
           lastMove: lastMovePayload,
+          eloChange, // ✅ gửi cho FE
         });
         return;
       }
@@ -141,11 +197,10 @@ export function registerGameHandlers(io, socket) {
         room.winner = "draw";
         room.status = "finished";
         room.turnStartedAt = null;
-
-        //  reset ready
         room.players.forEach((p) => (p.isReady = false));
-
         await room.save();
+
+        const eloChange = await applyElo(room, "draw");
 
         await finishMatch(room, "draw");
         clearTurnTimer(roomCode);
@@ -155,6 +210,7 @@ export function registerGameHandlers(io, socket) {
           winner: "draw",
           winningLine: null,
           lastMove: lastMovePayload,
+          eloChange,
         });
         return;
       }
@@ -177,9 +233,12 @@ export function registerGameHandlers(io, socket) {
   socket.on("game:moves", async ({ roomCode }) => {
     try {
       const room = await Room.findOne({ code: roomCode });
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
-      const moves = await Move.find({ roomId: room._id }).sort({ createdAt: 1 }).lean();
+      const moves = await Move.find({ roomId: room._id })
+        .sort({ createdAt: 1 })
+        .lean();
 
       socket.emit("game:moves", {
         roomCode,

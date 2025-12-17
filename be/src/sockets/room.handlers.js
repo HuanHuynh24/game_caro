@@ -23,6 +23,7 @@ function publicRoom(room) {
     players: room.players.map((p) => ({
       userId: p.userId?._id ?? p.userId,
       username: p.userId?.username ?? null,
+      elo: p.userId?.elo ?? 1000,
       symbol: p.symbol,
       isReady: p.isReady,
     })),
@@ -38,8 +39,8 @@ function findPlayer(room, userId) {
 
 async function loadRoomPopulated(code) {
   return Room.findOne({ code })
-    .populate("players.userId", "username")
-    .populate("hostId", "username");
+    .populate("players.userId", "username elo") // ✅
+    .populate("hostId", "username elo");
 }
 
 export function registerRoomHandlers(io, socket) {
@@ -68,7 +69,10 @@ export function registerRoomHandlers(io, socket) {
       const populated = await loadRoomPopulated(code);
 
       socket.join(code);
-      socket.emit("room:created", { roomCode: code, room: publicRoom(populated) });
+      socket.emit("room:created", {
+        roomCode: code,
+        room: publicRoom(populated),
+      });
       io.to(code).emit("room:updated", { room: publicRoom(populated) });
     } catch (e) {
       socket.emit("room:error", { message: "Tạo phòng thất bại" });
@@ -82,13 +86,18 @@ export function registerRoomHandlers(io, socket) {
     try {
       const userId = socket.userId;
       const room = await loadRoomPopulated(roomCode);
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
       // nếu user đã ở trong phòng => cho join lại (refresh/reconnect)
       const existedPlayer = findPlayer(room, userId);
       if (existedPlayer) {
         socket.join(roomCode);
-        socket.emit("room:joined", { roomCode, room: publicRoom(room), me: userId });
+        socket.emit("room:joined", {
+          roomCode,
+          room: publicRoom(room),
+          me: userId,
+        });
         io.to(roomCode).emit("room:updated", { room: publicRoom(room) });
         return;
       }
@@ -104,7 +113,11 @@ export function registerRoomHandlers(io, socket) {
       const updated = await loadRoomPopulated(roomCode);
 
       socket.join(roomCode);
-      socket.emit("room:joined", { roomCode, room: publicRoom(updated), me: userId });
+      socket.emit("room:joined", {
+        roomCode,
+        room: publicRoom(updated),
+        me: userId,
+      });
       io.to(roomCode).emit("room:updated", { room: publicRoom(updated) });
     } catch (e) {
       socket.emit("room:error", { message: "Vào phòng thất bại" });
@@ -117,7 +130,8 @@ export function registerRoomHandlers(io, socket) {
   socket.on("room:sync", async ({ roomCode }) => {
     try {
       const room = await loadRoomPopulated(roomCode);
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
       socket.join(roomCode);
       socket.emit("room:updated", { room: publicRoom(room) });
@@ -134,10 +148,12 @@ export function registerRoomHandlers(io, socket) {
     try {
       const userId = socket.userId;
       const room = await loadRoomPopulated(roomCode);
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
       const p = findPlayer(room, userId);
-      if (!p) return socket.emit("room:error", { message: "Bạn không thuộc phòng" });
+      if (!p)
+        return socket.emit("room:error", { message: "Bạn không thuộc phòng" });
 
       p.isReady = !!ready;
 
@@ -175,7 +191,8 @@ export function registerRoomHandlers(io, socket) {
     try {
       const userId = socket.userId;
       const room = await loadRoomPopulated(roomCode);
-      if (!room) return socket.emit("room:error", { message: "Phòng không tồn tại" });
+      if (!room)
+        return socket.emit("room:error", { message: "Phòng không tồn tại" });
 
       if (uid(room.hostId) !== uid(userId)) {
         return socket.emit("room:error", { message: "Chỉ host được bắt đầu" });
@@ -186,7 +203,9 @@ export function registerRoomHandlers(io, socket) {
 
       //  bắt buộc cả 2 người phải ready lại trước khi start (fix rematch)
       if (!room.players.every((p) => p.isReady)) {
-        return socket.emit("room:error", { message: "Cần cả 2 người bấm READY/Play again trước khi bắt đầu" });
+        return socket.emit("room:error", {
+          message: "Cần cả 2 người bấm READY/Play again trước khi bắt đầu",
+        });
       }
 
       room.status = "playing";
@@ -226,7 +245,9 @@ export function registerRoomHandlers(io, socket) {
         await Move.deleteMany({ roomId: room._id });
         await Room.deleteOne({ _id: room._id });
 
-        io.to(roomCode).emit("room:error", { message: "Host rời phòng, phòng bị đóng" });
+        io.to(roomCode).emit("room:error", {
+          message: "Host rời phòng, phòng bị đóng",
+        });
         return;
       }
 

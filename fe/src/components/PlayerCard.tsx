@@ -30,7 +30,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     const s = Math.max(0, seconds | 0);
     const mins = Math.floor(s / 60);
     const secs = s % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const isX = player === "X";
@@ -84,7 +86,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             avatarClasses,
           ].join(" ")}
         >
-          {isX ? <IconX className="w-8 h-8 text-cyan-400" /> : <IconO className="w-8 h-8 text-rose-400" />}
+          {isX ? (
+            <IconX className="w-8 h-8 text-cyan-400" />
+          ) : (
+            <IconO className="w-8 h-8 text-rose-400" />
+          )}
         </div>
 
         {isActive && !winner && (
@@ -102,13 +108,12 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             {name}
           </h3>
 
-          {/* <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
+          {/* SHOW ELO */}
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
-              {player} • ELO {elo}
+              {player} • ELO {elo ?? 1000}
             </span>
-            <span className="text-slate-500">•</span>
-            <span>Wins: {score}</span>
-          </div> */}
+          </div>
         </div>
       </div>
 
@@ -116,7 +121,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       <div
         className={[
           "flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-lg font-bold border",
-          isActive && !winner ? timerActiveClasses : "bg-slate-950/30 text-slate-500 border-slate-800",
+          isActive && !winner
+            ? timerActiveClasses
+            : "bg-slate-950/30 text-slate-500 border-slate-800",
           isDanger ? "animate-pulse text-red-500 border-red-900/50" : "",
         ].join(" ")}
       >

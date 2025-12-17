@@ -23,6 +23,14 @@ export default function Home() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
 
+  type LeaderUser = { _id: string; username: string; elo: number };
+
+  const [leaderboard, setLeaderboard] = useState<LeaderUser[]>([]);
+
+  const API_BASE =
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+    "http://localhost:4000";
+
   const router = useRouter();
 
   //  Socket nằm trong state để khi reset thì effect re-bind listeners
@@ -33,6 +41,22 @@ export default function Home() {
     const s = getSocket();
     setSocket(s);
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    fetch(`${API_BASE}/api/users/leaderboard?limit=10`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        setLeaderboard(Array.isArray(d?.users) ? d.users : []);
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+    };
+  }, [API_BASE]);
 
   // Load user
   useEffect(() => {
@@ -293,6 +317,69 @@ export default function Home() {
             <Button variant="secondary" onClick={handleJoinRoom}>
               THAM GIA PHÒNG
             </Button>
+          </div>
+
+          {/* LEADERBOARD */}
+          <div className="max-w-2xl mx-auto mt-10 mb-24 text-left">
+            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 backdrop-blur-md">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Leaderboard
+                  </div>
+                  <div className="text-white font-semibold mt-1">
+                    Top người chơi ELO cao nhất
+                  </div>
+                </div>
+
+                <div className="px-3 py-1 rounded-full bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold tracking-widest">
+                  RANKED
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {leaderboard.length === 0 ? (
+                  <div className="text-center text-xs text-slate-500 italic py-6">
+                    Chưa có dữ liệu xếp hạng
+                  </div>
+                ) : (
+                  leaderboard.map((u, i) => (
+                    <div
+                      key={u._id}
+                      className={[
+                        "flex items-center justify-between px-4 py-3 rounded-xl border transition",
+                        i === 0
+                          ? "bg-amber-500/10 border-amber-500/30 shadow-[0_0_16px_rgba(245,158,11,0.22)]"
+                          : "bg-slate-950/30 border-slate-800 hover:bg-slate-800/30",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={[
+                            "w-8 text-center font-mono text-xs font-bold",
+                            i === 0 ? "text-amber-400" : "text-slate-500",
+                          ].join(" ")}
+                        >
+                          #{i + 1}
+                        </span>
+
+                        <span className="text-sm text-slate-200 font-semibold truncate">
+                          {u.username}
+                        </span>
+                      </div>
+
+                      <span className="text-sm font-mono font-bold text-indigo-400">
+                        {u.elo}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-4 text-[11px] text-slate-500 font-mono">
+                Tip: Chơi “CHƠI NGAY” để được tính ELO (ranked).
+              </div>
+            </div>
           </div>
         </div>
       </main>
