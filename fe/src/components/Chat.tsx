@@ -1,19 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Player, ChatMessage } from '@/interface/type';
-import { IconSend, IconMessage } from '@/components/Icons';
+import React, { useState, useRef, useEffect } from "react";
+import { ChatMessage } from "@/interface/type";
+import { IconSend, IconMessage } from "@/components/Icons";
 
 interface ChatProps {
   messages: ChatMessage[];
   onSendMessage: (text: string) => void;
-  currentPlayer: Player;
+
+  // ✅ ký hiệu của mình để canh trái/phải
+  mySymbol: "X" | "O" | null;
 }
 
-export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, currentPlayer }) => {
-  const [inputText, setInputText] = useState('');
+export const Chat: React.FC<ChatProps> = ({
+  messages,
+  onSendMessage,
+  mySymbol,
+}) => {
+  const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -22,15 +28,15 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, currentPlay
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim()) {
-      onSendMessage(inputText.trim());
-      setInputText('');
+    const t = inputText.trim();
+    if (t) {
+      onSendMessage(t);
+      setInputText("");
     }
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-900/30 backdrop-blur-sm overflow-hidden">
-      
       {/* Messages Area */}
       <div className="flex-grow overflow-y-auto p-3 space-y-3 custom-scrollbar">
         {messages.length === 0 ? (
@@ -39,45 +45,88 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, currentPlay
             <p>No messages yet.</p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isMe = msg.sender === currentPlayer;
-            const isSystem = msg.sender === 'System';
-            
+          messages.map((msg: any) => {
+            const isSystem = msg.sender === "System";
             if (isSystem) {
-                return (
-                    <div key={msg.id} className="flex justify-center my-2">
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-700/50">
-                            {msg.text}
-                        </span>
-                    </div>
-                )
-            }
-
-            const isX = msg.sender === 'X';
-
-            return (
-              <div 
-                key={msg.id} 
-                className={`flex flex-col max-w-[90%] ${isX ? 'mr-auto items-start' : 'ml-auto items-end'}`}
-              >
-                <div className="flex items-center gap-1.5 mb-1">
-                  {/* Tiny Avatar */}
-                  <div className={`
-                    w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold
-                    ${isX ? 'bg-cyan-900 text-cyan-400' : 'bg-rose-900 text-rose-400'}
-                  `}>
-                    {msg.sender}
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              return (
+                <div key={msg.id} className="flex justify-center my-2">
+                  <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-700/50">
+                    {msg.text}
                   </span>
                 </div>
-                <div 
+              );
+            }
+
+            const senderSymbol = (msg.sender ??
+              msg.fromSymbol ??
+              msg.symbol) as "X" | "O" | "System";
+
+            const isMe =
+              senderSymbol === "System"
+                ? false
+                : mySymbol
+                ? senderSymbol === mySymbol
+                : false;
+
+            const isX = senderSymbol === "X";
+
+            const ts =
+              msg.timestamp instanceof Date
+                ? msg.timestamp
+                : new Date(msg.timestamp);
+
+            return (
+              <div
+                key={msg.id}
+                className={`flex flex-col max-w-[90%] ${
+                  isMe ? "ml-auto items-end" : "mr-auto items-start"
+                }`}
+              >
+                <div className="flex items-start gap-1.5 mb-1">
+                  {/* Avatar */}
+                  <div
+                    className={`
+      w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0
+      ${isX ? "bg-cyan-900 text-cyan-400" : "bg-rose-900 text-rose-400"}
+    `}
+                  >
+                    {senderSymbol}
+                  </div>
+
+                  {/* Username (trên) + Time (dưới) */}
+                  {!isMe && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 font-medium leading-tight">
+                        {msg.username || "Unknown"}
+                      </span>
+
+                      <span className="text-[9px] text-slate-500 font-mono leading-tight">
+                        {ts.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Nếu là isMe → chỉ hiện time (bên phải bubble) */}
+                  {isMe && (
+                    <span className="text-[9px] text-slate-500 font-mono leading-tight ml-1">
+                      {ts.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+                </div>
+
+                <div
                   className={`
                     px-3 py-2 rounded-lg text-sm break-words shadow-sm border
-                    ${isX 
-                      ? 'bg-slate-800/80 text-slate-200 border-slate-700 rounded-tl-none' 
-                      : 'bg-slate-700/40 text-slate-200 border-slate-600 rounded-tr-none'
+                    ${
+                      isMe
+                        ? "bg-slate-700/40 text-slate-200 border-slate-600 rounded-tr-none"
+                        : "bg-slate-800/80 text-slate-200 border-slate-700 rounded-tl-none"
                     }
                   `}
                 >
@@ -87,11 +136,15 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, currentPlay
             );
           })
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-slate-800 bg-slate-900/50">
+      <form
+        onSubmit={handleSubmit}
+        className="p-3 border-t border-slate-800 bg-slate-900/50"
+      >
         <div className="relative">
           <input
             type="text"
@@ -105,9 +158,10 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, currentPlay
             disabled={!inputText.trim()}
             className={`
               absolute right-1.5 top-1.5 p-1.5 rounded-md transition-all
-              ${!inputText.trim() 
-                ? 'text-slate-700 cursor-default' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
+              ${
+                !inputText.trim()
+                  ? "text-slate-700 cursor-default"
+                  : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20"
               }
             `}
           >

@@ -9,7 +9,7 @@ function signToken(userId) {
 
 export const register = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
     if (!username || !password) {
       return res
@@ -24,7 +24,9 @@ export const register = async (req, res) => {
         .json({ success: false, message: "Username đã tồn tại" });
     }
 
-    const user = await User.create({ username, password }); // (hash password nếu bạn có)
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({ username, passwordHash, email });
 
     const token = signToken(user._id.toString());
 
@@ -37,6 +39,7 @@ export const register = async (req, res) => {
     return res.status(500).json({ success: false, message: "Register failed" });
   }
 };
+
 export async function login(req, res) {
   try {
     const { username, password } = req.body || {};

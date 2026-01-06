@@ -10,10 +10,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: AuthMode;
-  onAuthSuccess?: (payload: { user: any; token: string }) => void; // ✅ trả {user, token}
+  onAuthSuccess?: (payload: { user: any; token: string }) => void; //  trả {user, token}
 }
 
-// ✅ dùng env cho đúng chuẩn Next.js
+//  dùng env cho đúng chuẩn Next.js
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:4000";
 
@@ -79,6 +79,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         body: JSON.stringify({
           username: form.username,
           password: form.password,
+          email: form.email
         }),
       });
 
@@ -90,7 +91,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       
       console.log(data)
 
-      // ✅ BE trả { token, user }
+      //  BE trả { token, user }
       const token = data.token;
       const user = data.user;
 

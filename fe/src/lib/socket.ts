@@ -1,18 +1,27 @@
-
-import { io, Socket } from "socket.io-client";
+// src/lib/socket.ts
+import { io, type Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-export function getSocket() {
-  if (!socket) {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+function getToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
 
-    socket = io(process.env.NEXT_PUBLIC_WS_URL!, {
-      transports: ["websocket"],
-      auth: { token }, // BE đọc socket.handshake.auth.token
-      autoConnect: true,
-    });
-  }
+export function getSocket(): Socket {
+  if (socket) return socket;
+
+  const token = getToken();
+
+  socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000", {
+    transports: ["websocket"],
+    withCredentials: true,
+    autoConnect: true,
+    auth: {
+      token, // ✅ BE đọc socket.handshake.auth.token
+    },
+  });
+
   return socket;
 }
 
